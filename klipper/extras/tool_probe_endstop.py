@@ -43,6 +43,8 @@ class ToolProbeEndstop:
                                     desc=self.cmd_START_TOOL_PROBE_CRASH_DETECTION_help)
         self.gcode.register_command('STOP_TOOL_PROBE_CRASH_DETECTION', self.cmd_STOP_TOOL_PROBE_CRASH_DETECTION,
                                     desc=self.cmd_STOP_TOOL_PROBE_CRASH_DETECTION_help)
+        self.gcode.register_command('QUERY_ALL_PROBES', self.cmd_QUERY_ALL_PROBES,
+                                    desc=self.cmd_QUERY_ALL_PROBES_help)
 
     def _handle_connect(self):
         self.toolhead = self.printer.lookup_object('toolhead')
@@ -183,6 +185,20 @@ class ToolProbeEndstop:
         if self.crash_detection_active:
             self.crash_detection_active = False
             self.crash_gcode.run_gcode_from_command()
+
+    cmd_QUERY_ALL_PROBES_help = "same as QUERY_PROBE but for all tool_probes"
+    def cmd_QUERY_ALL_PROBES(self, gcmd):
+        try:
+            # Query the status of tool endstops
+            print_time = self.toolhead.get_last_move_time()
+            tool_endstop_states = []
+            for tool_number, tool_probe in self.tool_probes.items():
+                triggered = tool_probe.mcu_probe.query_endstop(print_time)
+                tool_endstop_states.append(f"T{tool_number}: {'TRIGGERED' if triggered else 'open'}")
+            # Respond with the tool endstop states
+            gcmd.respond_info('\n'.join(tool_endstop_states))
+        except Exception as e:
+            gcmd.respond_info(f"Internal error: {str(e)}")
 
 # Routes commands to the selected tool probe endstop.
 class EndstopRouter:
