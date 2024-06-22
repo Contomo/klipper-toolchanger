@@ -35,8 +35,6 @@ class ToolProbe:
         return self.probe_offsets.get_offsets()
     def start_probe_session(self, gcmd):
         return self.probe_session.start_probe_session(gcmd)
-    
-    
 
 # Helper to track multiple probe attempts in a single command
 class ProbeSessionHelper:
