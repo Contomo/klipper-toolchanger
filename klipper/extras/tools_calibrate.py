@@ -196,14 +196,18 @@ class ToolsCalibrate:
     def respond_info(self, message, gcmd=None):
         if self.disable_responses:
             return
+        if gcmd:
+            gcmd.respond_info(message)
         else:
             self.gcode.respond_info(message)
           
     def respond_warning(self, message, gcmd=None):
-        if self.disable_responses:
+        if self.disable_warnings:
             return
+        if gcmd:
+            gcmd.respond_warn(message)
         else:
-            self.gcode.respond_info(message)
+            self.gcode.respond_warn(message)
 
 class PrinterProbeMultiAxis:
     def __init__(self, config, mcu_probe_x, mcu_probe_y, mcu_probe_z):
