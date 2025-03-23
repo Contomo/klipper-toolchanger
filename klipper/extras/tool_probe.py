@@ -70,8 +70,27 @@ class ProbeSessionHelper:
         self.multi_probe_pending = False
         self.results = []
         # Register event handlers
+        self.disable_responses = config.getboolean('disable_responses', False)
+        self.disable_warnings = config.getboolean('disable_warnings', False)
         self.printer.register_event_handler("gcode:command_error",
                                             self._handle_command_error)
+
+    def respond_info(self, message, gcmd=None):
+        if self.disable_responses:
+            return
+        if gcmd:
+            gcmd.respond_info(message)
+        else:
+            self.gcode.respond_info(message)
+
+    def disable_warning(self, message, gcmd=None):
+        if self.disable_warnings:
+            return
+        if gcmd:
+            gcmd.respond_info(message)
+        else:
+            self.gcode.respond_info(message)
+    
     def _handle_command_error(self):
         if self.multi_probe_pending:
             try:
@@ -132,7 +151,7 @@ class ProbeSessionHelper:
         self.printer.send_event("probe:update_results", epos)
         # Report results
         gcode = self.printer.lookup_object('gcode')
-        gcode.respond_info("probe at %.3f,%.3f is z=%.6f"
+        self.respond_info("probe at %.3f,%.3f is z=%.6f"
                            % (epos[0], epos[1], epos[2]))
         return epos[:3]
     def run_probe(self, gcmd):
@@ -153,7 +172,7 @@ class ProbeSessionHelper:
             if max(z_positions)-min(z_positions) > params['samples_tolerance']:
                 if retries >= params['samples_tolerance_retries']:
                     raise gcmd.error("Probe samples exceed samples_tolerance")
-                gcmd.respond_info("Probe samples exceed tolerance. Retrying...")
+                self.respond_warnig("Probe samples exceed tolerance. Retrying...")
                 retries += 1
                 positions = []
             # Retract
