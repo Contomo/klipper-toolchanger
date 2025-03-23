@@ -42,6 +42,7 @@ class ToolsCalibrate:
         self.last_result = [0., 0., 0.]
         self.last_probe_offset = 0.
         self.calibration_probe_inactive = True
+        self.disable_responses = config.getboolean('disable_responses', False)
 
         # Register commands
         self.gcode = self.printer.lookup_object('gcode')
@@ -115,7 +116,7 @@ class ToolsCalibrate:
     def cmd_TOOL_LOCATE_SENSOR(self, gcmd):
         self.last_result = self.locate_sensor(gcmd)
         self.sensor_location = self.last_result
-        self.gcode.respond_info("Sensor location at %.6f,%.6f,%.6f"
+        self.respond_info("Sensor location at %.6f,%.6f,%.6f"
                                 % (self.last_result[0], self.last_result[1],
                                    self.last_result[2]))
 
@@ -128,7 +129,7 @@ class ToolsCalibrate:
         location = self.locate_sensor(gcmd)
         self.last_result = [location[i] - self.sensor_location[i] for i in
                             range(3)]
-        self.gcode.respond_info("Tool offset is %.6f,%.6f,%.6f"
+        self.respond_info("Tool offset is %.6f,%.6f,%.6f"
                                 % (self.last_result[0], self.last_result[1],
                                    self.last_result[2]))
 
@@ -163,7 +164,7 @@ class ToolsCalibrate:
 
         z_offset = probe_z - nozzle_z + self.trigger_to_bottom_z
         self.last_probe_offset = z_offset
-        self.gcode.respond_info(
+        self.respond_info(
             "%s: z_offset: %.3f\n"
             "The SAVE_CONFIG command will update the printer config file\n"
             "with the above and restart the printer." % (
@@ -191,6 +192,18 @@ class ToolsCalibrate:
         endstop_states = [probe.query_endstop(print_time) for probe in self.probe_multi_axis.mcu_probe] # Check the state of each axis probe (x, y, z)
         self.calibration_probe_inactive = any(endstop_states)
         gcmd.respond_info("Calibration Probe: %s" % (["open", "TRIGGERED"][any(endstop_states)]))
+
+    def respond_info(self, message, gcmd=None):
+        if self.disable_responses:
+            return
+        else:
+            self.gcode.respond_info(message)
+          
+    def respond_warning(self, message, gcmd=None):
+        if self.disable_responses:
+            return
+        else:
+            self.gcode.respond_info(message)
 
 class PrinterProbeMultiAxis:
     def __init__(self, config, mcu_probe_x, mcu_probe_y, mcu_probe_z):
@@ -246,7 +259,7 @@ class PrinterProbeMultiAxis:
                 reason += HINT_TIMEOUT
             raise self.printer.command_error(reason)
         # self.gcode.respond_info("probe at %.3f,%.3f is z=%.6f"
-        self.gcode.respond_info("Probe made contact at %.6f,%.6f,%.6f"
+        self.respond_info("Probe made contact at %.6f,%.6f,%.6f"
                                 % (epos[0], epos[1], epos[2]))
         return epos[:3]
 
@@ -324,7 +337,7 @@ class PrinterProbeMultiAxis:
             if max(axis_positions) - min(axis_positions) > samples_tolerance:
                 if retries >= samples_retries:
                     raise gcmd.error("Probe samples exceed samples_tolerance")
-                gcmd.respond_info("Probe samples exceed tolerance. Retrying...")
+                gcmd.respond_warning("Probe samples exceed tolerance. Retrying...")
                 retries += 1
                 positions = []
             # Retract
